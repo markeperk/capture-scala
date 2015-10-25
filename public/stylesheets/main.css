@@ -117,6 +117,14 @@ html, body {
     opacity: 0;
     filter: alpha(opacity=0);
 }
+.display {
+    margin: 15px;
+}
+.dataForDisplay {
+    list-style: none;
+    font-size: 12px;
+    line-height: 1.2;
+}
 .form-control {
     padding: 0.85rem 1rem !important;
     height: auto;

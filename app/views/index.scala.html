@@ -1,5 +1,7 @@
-@(message: String)
+@(orders: List[String])
 @import helper._
+@import play.api.libs.json.Json
+@import play.api.libs.json.JsValue
 
 @main("capture") {
 
@@ -27,8 +29,12 @@
             </div>
         </div>
     </div>
-    <div>
-    @message
+    <div class="display">
+        <ul class="dataForDisplay">
+        @for(order <- orders) {
+          <li>@order</li>
+        }
+        </ul>
     </div>
 
 }

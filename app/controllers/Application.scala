@@ -9,37 +9,34 @@ import play.api.data.Forms._
 import scala.language.postfixOps
 import scala.io.Source
 import scala.math.Ordering.Implicits._
-
+import scala.collection.mutable.ListBuffer
 
 
 class Application extends Controller {
 
   def index = Action {
-    Ok(views.html.index("Your new application is ready."))
+  	val message = List("Please upload a .har file. Thank you","")
+    Ok(views.html.index(message))
   }
-
 	def upload = Action(parse.multipartFormData) { request =>
 	  request.body.file("har").map { har =>
 	    import java.io.File
 	    val ref = har.ref.toString()
 	    val tempFilePath = ref.substring(ref.indexOf("(") + 1, ref.length - 1)
-	    // println("Temp File Path: " + tempFilePath)
 	  	var data = scala.io.Source.fromFile(tempFilePath).getLines.mkString("\n")
-			// println(data.getClass.getSimpleName)
 			val jsonObject = scala.util.parsing.json.JSON.parseFull(data)
 			val globalMap = jsonObject.get.asInstanceOf[Map[String, Any]]
 			val logMap = globalMap.get("log").get.asInstanceOf[Map[String, Any]]
-			//Page Values
+			//Page Info
 			val pageData = logMap.get("pages").get.asInstanceOf[List[Map[String, Any]]]
-			println("Page URL: " + pageData(0).get("title").get.asInstanceOf[String])
-			pageData.foreach(i => println("  Page onContentLoad: " +
-				i.get("pageTimings").get.asInstanceOf[Map[String, Any]]
-				 .get("onContentLoad").get.asInstanceOf[Double])
-			)
-			pageData.foreach(i => println("  Page onLoad: " +
-				i.get("pageTimings").get.asInstanceOf[Map[String, Any]]
-				 .get("onLoad").get.asInstanceOf[Double])
-			)
+			val pageURL = pageData(0).get("title").get.asInstanceOf[String]
+			val pageOnContentLoad = pageData(0)
+				 .get("pageTimings").get.asInstanceOf[Map[String, Any]]
+				 .get("onContentLoad")
+				 .get.asInstanceOf[Double]
+			val pageOnLoad = pageData(0)
+				 .get("pageTimings").get.asInstanceOf[Map[String, Any]]
+				 .get("onLoad").get.asInstanceOf[Double]
 			//Entry Values
 			val entryData = logMap.get("entries").get.asInstanceOf[List[Map[String, Any]]]	
 			var loadTime = 0.0
@@ -58,7 +55,7 @@ class Application extends Controller {
 			val avgReceive = entryData.map(i => i.get("timings").get.asInstanceOf[Map[String, Any]]
 					 .get("receive").get.asInstanceOf[Double]
 				).sum / entryData.length
-			//Size
+			//Approaches to Size
 			val contentSize = entryData.map(i => i.get("response").get.asInstanceOf[Map[String, Any]]
 					 .get("content").get.asInstanceOf[Map[String, Any]]
 					 .get("size").get.asInstanceOf[Double]
@@ -96,8 +93,8 @@ class Application extends Controller {
 			val contentTypeCount = contentType.groupBy(x=>x).mapValues(x=>x.length)		
 			//Entry Status
 			val statusType = entryData.map(i => 
-					 i.get("response").get.asInstanceOf[Map[String, Any]]
-					 	.get("status").get.asInstanceOf[Double] + ": " + 
+					 (i.get("response").get.asInstanceOf[Map[String, Any]]
+					 	.get("status").get.asInstanceOf[Double]).toInt + ": " + 
 					 i.get("response").get.asInstanceOf[Map[String, Any]]
 					 	.get("statusText").get.asInstanceOf[String] 
 				)
@@ -109,32 +106,40 @@ class Application extends Controller {
 					 i.get("response").get.asInstanceOf[Map[String, Any]]
 					 	.get("cookies").get.asInstanceOf[List[String]].length 
 				).sum
-//			DB.save(numOfCookies)
-
-			//Print Values
-			println("Total Requests: " + entryData.length)
-			println(" Transferred (Entry): " + entrySize)
-			println(" Transferred (Content): " + contentSize)
-			println("   Avg. Transfer: " + contentSize/entryData.length)
-			println(" Duration (Total): " + loadTime)
-			println("   Avg. Duration: " + loadTime/entryData.length)
-			println("   Avg. Latency: " + avgLatency)
-			println(" Avg. Time Request Sent: " + avgSend)
-			println(" Avg. Time Waiting: " + avgWait)
-			println(" Avg. Time to Download: " + avgReceive)
-			println("Number of Cookies: " + numOfCookies)
-			println("Response Content-Types:")
-			for((k,v) <- contentTypeCount) println("  " + k + " (" + v + ")")
-			println("Response Statuses:")
-			for((k,v) <- statusTypeCount) println("  " + k + " (" + v + ")")
-			println("Worst Offenders (by LoadTime)")
-			for((k,v) <- entryTimeTen) println("   Duration: (" + v + ") Entry Name: " + k)
-			println("Worst Offenders (by Size)")
-			for((k,v) <- entrySizeTen) println("   Size: (" + v + ") Entry Name: " + k)
-
-			val message = "Total Requests: " + entryData.length + " Transferred (Entry): " + entrySize
-
-	    Ok(views.html.index(message))
+			//DB.save(numOfCookies) //wrong Type to save data - work on this later
+			//Data List
+			var dataList = new ListBuffer[String]()
+					dataList += "Filename: " + har.filename
+					dataList += "--------"
+					dataList += "Page URL: " + pageURL
+					dataList += "- Page onContentLoad: " + convertTime(pageOnContentLoad)
+					dataList += "- Page onLoad: " + convertTime(pageOnLoad)
+					dataList += "--------"
+					dataList += "Total Requests: " + entryData.length
+					dataList += "Transferred (Entry-Size): " + formatBytes(entrySize)
+					dataList += "Transferred (Content-Size): " + formatBytes(contentSize)
+					dataList += "- Avg. Transfer Size: " + convertTime(contentSize/entryData.length)
+					dataList += "Duration (Total): " + convertTime(loadTime)
+					dataList += "- Avg. Duration: " + convertTime(loadTime/entryData.length)
+					dataList += "- Avg. Latency: " + convertTime(avgLatency)
+					dataList += "- Avg. Time Request Sent: " + convertTime(avgSend)
+					dataList += "- Avg. Time Waiting: " + convertTime(avgWait)
+					dataList += "- Avg. Time to Download: " + convertTime(avgReceive)
+					dataList += "Number of Cookies: " + numOfCookies
+					dataList += "--------"
+					dataList += "Number of Content-Types:"
+					for((k,v) <- contentTypeCount) dataList += ("- " + k + " (" + v + ")")
+					dataList += "--------"
+					dataList += "Number of Response Status-Types: "
+					for((k,v) <- statusTypeCount) dataList += ("- " + k + " (" + v + ")")
+					dataList += "--------"
+					dataList += "Worst Offenders (by LoadTime): "
+					for((k,v) <- entryTimeTen) dataList += "- Duration: " + convertTime(v) + "; Name: " + k
+					dataList += "--------"
+					dataList += "Worst Offenders (by Size): "
+					for((k,v) <- entrySizeTen) dataList += "- Size: " + formatBytes(v) + "; Name: " + k
+			val dataForDisplay = dataList.toList
+	    Ok(views.html.index(dataForDisplay))
 	  }.getOrElse {
 	    Redirect(routes.Application.index).flashing(
 	      "error" -> "Missing file"
@@ -145,25 +150,17 @@ class Application extends Controller {
 		val dbData = DB.query[Hardata].fetch
 		Ok(Json.toJson(dbData))
 	}
-
+  def convertTime(args: Double) : String = {
+		import java.text.SimpleDateFormat;
+		return new SimpleDateFormat("s.SSSS").format(args) + " sec"
+  }
+  def formatBytes(args: Double) : String = {
+  	import java.text.DecimalFormat
+    val units = List("b", "kb", "mb")
+    val digitGroups = (Math.log10(args) / Math.log10(1024)).toInt
+    return new DecimalFormat("#,##0.#").format(args / Math.pow(1024, digitGroups)) + " " + units(digitGroups)
+	}
 }
 
 
 
-	// def upload = Action(parse.multipartFormData) { request =>
-	//   request.body.file("har").map { har =>
-	//     import java.io.File
-	//     val ref = har.ref.toString()
-	//     val tempFilePath = ref.substring(ref.indexOf("(") + 1, ref.length - 1)
-	//     println("Temp File Path: " + tempFilePath)
-	//   	var data = scala.io.Source.fromFile(tempFilePath).getLines().mkString("\n")
-	// 		println(data.getClass.getSimpleName)
-	// 		// println(JSON.parseFull(data))
-
-	//     Ok(data)
-	//   }.getOrElse {
-	//     Redirect(routes.Application.index).flashing(
-	//       "error" -> "Missing file"
-	//     )
-	//   }
-	// }
