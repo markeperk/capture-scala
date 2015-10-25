@@ -1,40 +1,35 @@
-@(orders: List[String])
+@(data: List[String])
 @import helper._
-@import play.api.libs.json.Json
-@import play.api.libs.json.JsValue
 
 @main("capture") {
-
-    <div class="topbar"></div>
-    <div class="menubar">
-        <div class="menu">
-            <div class="menu-left">
-                <div class="logo"><em>Capture</em></div>
-            </div>
-            <div class="menu-right">
-                <div class="menu-input-holder">
-                    <div class="menu-input">
-                            <!-- File Uploader -->
-                        <div class="menu-input-type">
-                            @form(action = routes.Application.upload, 'enctype -> "multipart/form-data") {
-                                <div class="pull-right"><input type="submit"></div>
-                                <div class="fileUpload btns pull-right">
-                                    <span>Upload .har File</span>
-                                    <input type="file" name="har" class="upload">
-                                </div>
-                            }
-                        </div>
-                    </div>
+  <div class="topbar"></div>
+  <div class="menubar">
+    <div class="menu">
+      <div class="menu-left">
+          <div class="logo"><em>Capture</em></div>
+      </div>
+      <div class="menu-right">
+        <div class="menu-input-holder">
+          <div class="menu-input">
+                <!-- File Uploader -->
+            <div class="menu-input-type">
+              @form(action = routes.Application.upload, 'enctype -> "multipart/form-data") {
+                <div class="fileUpload btns pull-right">
+                  <span>Upload .har File</span>
+                  <input type="file" name="har" class="upload" id="file" onChange="form.submit()">
                 </div>
+              }
             </div>
+          </div>
         </div>
+      </div>
     </div>
-    <div class="display">
-        <ul class="dataForDisplay">
-        @for(order <- orders) {
-          <li>@order</li>
-        }
-        </ul>
-    </div>
-
+  </div>
+  <div class="display">
+    <ul class="dataForDisplay">
+      @for(datum <- data) {
+        <li>@datum</li>
+      }
+    </ul>
+  </div>
 }
