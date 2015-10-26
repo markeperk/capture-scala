@@ -20,7 +20,6 @@ class Application extends Controller {
   }
 	def upload = Action(parse.multipartFormData) { request =>
 	  request.body.file("har").map { har =>
-	    import java.io.File
 	    val ref = har.ref.toString()
 	    val tempFilePath = ref.substring(ref.indexOf("(") + 1, ref.length - 1)
 	  	var data = scala.io.Source.fromFile(tempFilePath).getLines.mkString("\n")
